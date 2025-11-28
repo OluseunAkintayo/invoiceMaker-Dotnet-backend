@@ -1,0 +1,51 @@
+# Visual Studio
+.vs/
+.vscode/
+*.sln.iml
+*.user
+*.suo
+*.userosscache
+
+# Build outputs
+bin/
+obj/
+dist/
+build/
+
+# Database files
+Database/*.db
+Database/*.db-shm
+Database/*.db-wal
+*.db
+*.db-shm
+*.db-wal
+
+# Configuration files (secrets)
+appsettings.json
+
+# Logs
+logs/
+*.log
+
+# Node modules (if using npm)
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# IDE settings
+.idea/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Coverage and testing
+coverage/
+.coverage
+*.trx

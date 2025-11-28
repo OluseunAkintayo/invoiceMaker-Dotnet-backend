@@ -1,6 +1,7 @@
 using invoice_backend.Data;
 using invoice_backend.Models;
 using invoice_backend.Models.Enums;
+using InvoiceModel = invoice_backend.Models.Invoice;
 using Microsoft.EntityFrameworkCore;
 
 namespace invoice_backend.Services.Invoice;
@@ -20,14 +21,14 @@ public class InvoiceService : IInvoiceService
     }
 
     /// <summary>
-    /// Get all invoices for a user
+    /// Get all invoices for a user (excludes soft-deleted invoices)
     /// </summary>
     public async Task<List<InvoiceDto>> GetAllInvoicesByUserAsync(int userId)
     {
         _logger.LogDebug("Fetching all invoices for user {UserId}", userId);
 
         var invoices = await _dbContext.Invoices
-            .Where(i => i.UserId == userId)
+            .Where(i => i.UserId == userId && i.Status != Status.SoftDeleted)
             .Include(i => i.InvoiceItems)
             .OrderByDescending(i => i.CreatedAt)
             .ToListAsync();
@@ -37,14 +38,14 @@ public class InvoiceService : IInvoiceService
     }
 
     /// <summary>
-    /// Get invoice by ID with authorization check
+    /// Get invoice by ID with authorization check (excludes soft-deleted invoices)
     /// </summary>
     public async Task<InvoiceDto?> GetInvoiceByIdAsync(int invoiceId, int userId)
     {
         _logger.LogDebug("Fetching invoice {InvoiceId} for user {UserId}", invoiceId, userId);
 
         var invoice = await _dbContext.Invoices
-            .Where(i => i.Id == invoiceId && i.UserId == userId)
+            .Where(i => i.Id == invoiceId && i.UserId == userId && i.Status != Status.SoftDeleted)
             .Include(i => i.InvoiceItems)
             .FirstOrDefaultAsync();
 
@@ -75,7 +76,7 @@ public class InvoiceService : IInvoiceService
         var taxAmount = subTotal * (request.TaxPercentage / 100);
         var total = subTotal + taxAmount - request.Discount;
 
-        var invoice = new Invoice
+        var invoice = new InvoiceModel
         {
             InvoiceNumber = invoiceNumber,
             UserId = userId,
@@ -123,7 +124,7 @@ public class InvoiceService : IInvoiceService
     }
 
     /// <summary>
-    /// Update an existing invoice
+    /// Update an existing invoice (excludes soft-deleted invoices)
     /// </summary>
     public async Task<InvoiceDto?> UpdateInvoiceAsync(int invoiceId, UpdateInvoiceRequest request, int userId)
     {
@@ -131,7 +132,7 @@ public class InvoiceService : IInvoiceService
 
         var invoice = await _dbContext.Invoices
             .Include(i => i.InvoiceItems)
-            .FirstOrDefaultAsync(i => i.Id == invoiceId && i.UserId == userId);
+            .FirstOrDefaultAsync(i => i.Id == invoiceId && i.UserId == userId && i.Status != Status.SoftDeleted);
 
         if (invoice == null)
         {
@@ -214,38 +215,41 @@ public class InvoiceService : IInvoiceService
     }
 
     /// <summary>
-    /// Delete an invoice
+    /// Soft delete an invoice by setting status to SoftDeleted
     /// </summary>
     public async Task<bool> DeleteInvoiceAsync(int invoiceId, int userId)
     {
-        _logger.LogInformation("Deleting invoice {InvoiceId} for user {UserId}", invoiceId, userId);
+        _logger.LogInformation("Soft deleting invoice {InvoiceId} for user {UserId}", invoiceId, userId);
 
         var invoice = await _dbContext.Invoices
             .FirstOrDefaultAsync(i => i.Id == invoiceId && i.UserId == userId);
 
         if (invoice == null)
         {
-            _logger.LogWarning("Invoice {InvoiceId} not found for deletion", invoiceId);
+            _logger.LogWarning("Invoice {InvoiceId} not found for soft deletion", invoiceId);
             return false;
         }
 
-        _dbContext.Invoices.Remove(invoice);
-        _logger.LogDebug("Deleting invoice {InvoiceId} from database", invoiceId);
+        invoice.Status = Status.SoftDeleted;
+        invoice.SoftDeletedAt = DateTime.UtcNow;
+        invoice.ModifiedAt = DateTime.UtcNow;
+
+        _logger.LogDebug("Marking invoice {InvoiceId} as soft deleted", invoiceId);
         await _dbContext.SaveChangesAsync();
 
-        _logger.LogInformation("Invoice {InvoiceId} deleted successfully", invoiceId);
+        _logger.LogInformation("Invoice {InvoiceId} soft deleted successfully", invoiceId);
         return true;
     }
 
     /// <summary>
-    /// Get invoices by status
+    /// Get invoices by status (excludes soft-deleted invoices)
     /// </summary>
     public async Task<List<InvoiceDto>> GetInvoicesByStatusAsync(int userId, InvoiceStatus status)
     {
         _logger.LogDebug("Fetching invoices with status {Status} for user {UserId}", status, userId);
 
         var invoices = await _dbContext.Invoices
-            .Where(i => i.UserId == userId && i.InvoiceStatus == status)
+            .Where(i => i.UserId == userId && i.InvoiceStatus == status && i.Status != Status.SoftDeleted)
             .Include(i => i.InvoiceItems)
             .OrderByDescending(i => i.CreatedAt)
             .ToListAsync();
@@ -255,7 +259,7 @@ public class InvoiceService : IInvoiceService
     }
 
     /// <summary>
-    /// Update invoice status
+    /// Update invoice status (excludes soft-deleted invoices)
     /// </summary>
     public async Task<InvoiceDto?> UpdateInvoiceStatusAsync(int invoiceId, InvoiceStatus status, int userId)
     {
@@ -263,7 +267,7 @@ public class InvoiceService : IInvoiceService
 
         var invoice = await _dbContext.Invoices
             .Include(i => i.InvoiceItems)
-            .FirstOrDefaultAsync(i => i.Id == invoiceId && i.UserId == userId);
+            .FirstOrDefaultAsync(i => i.Id == invoiceId && i.UserId == userId && i.Status != Status.SoftDeleted);
 
         if (invoice == null)
         {
@@ -283,7 +287,7 @@ public class InvoiceService : IInvoiceService
     /// <summary>
     /// Map Invoice entity to InvoiceDto
     /// </summary>
-    private static InvoiceDto MapToInvoiceDto(Invoice invoice)
+    private static InvoiceDto MapToInvoiceDto(InvoiceModel invoice)
     {
         return new InvoiceDto(
             Id: invoice.Id,
