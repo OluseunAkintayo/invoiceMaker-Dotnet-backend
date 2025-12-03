@@ -43,4 +43,19 @@ public interface IAuthService
     /// <param name="request">Google login request with ID token</param>
     /// <returns>Login response with JWT token</returns>
     Task<LoginResponse> GoogleLoginAsync(GoogleLoginRequest request);
+
+    /// <summary>
+    /// Logout a user by invalidating their JWT token
+    /// </summary>
+    /// <param name="token">JWT token to invalidate</param>
+    /// <param name="userId">User ID associated with the token</param>
+    /// <returns>Task representing the asynchronous operation</returns>
+    Task LogoutAsync(string token, int userId);
+
+    /// <summary>
+    /// Check if a token is blacklisted
+    /// </summary>
+    /// <param name="token">JWT token to check</param>
+    /// <returns>True if token is blacklisted, false otherwise</returns>
+    Task<bool> IsTokenBlacklistedAsync(string token);
 }

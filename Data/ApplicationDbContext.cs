@@ -13,6 +13,7 @@ public class ApplicationDbContext : DbContext
     public DbSet<User> Users { get; set; }
     public DbSet<Invoice> Invoices { get; set; }
     public DbSet<InvoiceItem> InvoiceItems { get; set; }
+    public DbSet<TokenBlacklist> TokenBlacklists { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -221,5 +222,29 @@ public class ApplicationDbContext : DbContext
             .WithMany(i => i.InvoiceItems)
             .HasForeignKey(ii => ii.InvoiceId)
             .OnDelete(DeleteBehavior.Cascade);
+
+        // Configure TokenBlacklist entity
+        modelBuilder.Entity<TokenBlacklist>()
+            .Property(tb => tb.Token)
+            .IsRequired()
+            .HasMaxLength(2000);
+
+        modelBuilder.Entity<TokenBlacklist>()
+            .HasIndex(tb => tb.Token);
+
+        modelBuilder.Entity<TokenBlacklist>()
+            .Property(tb => tb.UserId)
+            .IsRequired();
+
+        modelBuilder.Entity<TokenBlacklist>()
+            .Property(tb => tb.ExpiresAt)
+            .IsRequired();
+
+        modelBuilder.Entity<TokenBlacklist>()
+            .Property(tb => tb.BlacklistedAt)
+            .IsRequired();
+
+        modelBuilder.Entity<TokenBlacklist>()
+            .HasIndex(tb => tb.ExpiresAt);
     }
 }

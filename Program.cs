@@ -6,6 +6,7 @@ using invoice_backend.Services.Invoice;
 using invoice_backend.Services.Email;
 using invoice_backend.Services.GoogleTokenValidator;
 using invoice_backend.Services.BackgroundServices;
+using invoice_backend.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -125,6 +126,8 @@ try
     // Register background services
     builder.Services.AddScoped<IInvoiceDeletionPolicyService, InvoiceDeletionPolicyService>();
     builder.Services.AddHostedService<InvoiceDeletionPolicyHostedService>();
+    builder.Services.AddScoped<ITokenCleanupService, TokenCleanupService>();
+    builder.Services.AddHostedService<TokenCleanupHostedService>();
 
     // Add CORS
     builder.Services.AddCors(options =>
@@ -151,6 +154,7 @@ try
     app.UseCors("AllowAll");
 
     app.UseAuthentication();
+    app.UseMiddleware<TokenBlacklistMiddleware>();
     app.UseAuthorization();
 
     app.MapControllers();

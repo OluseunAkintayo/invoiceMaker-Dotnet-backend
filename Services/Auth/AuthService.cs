@@ -304,4 +304,77 @@ public class AuthService : IAuthService
             expiresAt
         );
     }
+
+    /// <summary>
+    /// Logout a user by invalidating their JWT token
+    /// </summary>
+    public async Task LogoutAsync(string token, int userId)
+    {
+        _logger.LogInformation("Logout attempt for user: {UserId}", userId);
+
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            _logger.LogWarning("Logout validation failed: Token is empty");
+            throw new ArgumentException("Token is required");
+        }
+
+        // Parse the token to get expiration time
+        var tokenHandler = new JwtSecurityTokenHandler();
+        JwtSecurityToken? jwtToken;
+
+        try
+        {
+            jwtToken = tokenHandler.ReadJwtToken(token);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to parse JWT token during logout");
+            throw new ArgumentException("Invalid token format");
+        }
+
+        var expiresAt = jwtToken.ValidTo;
+
+        // Check if token is already blacklisted
+        var existingBlacklist = await _dbContext.TokenBlacklists
+            .FirstOrDefaultAsync(tb => tb.Token == token);
+
+        if (existingBlacklist != null)
+        {
+            _logger.LogInformation("Token already blacklisted for user: {UserId}", userId);
+            return;
+        }
+
+        // Add token to blacklist
+        var tokenBlacklist = new TokenBlacklist
+        {
+            Token = token,
+            UserId = userId,
+            ExpiresAt = expiresAt,
+            BlacklistedAt = DateTime.UtcNow,
+            CreatedAt = DateTime.UtcNow,
+            ModifiedAt = DateTime.UtcNow,
+            IsActive = true
+        };
+
+        _dbContext.TokenBlacklists.Add(tokenBlacklist);
+        await _dbContext.SaveChangesAsync();
+
+        _logger.LogInformation("Token blacklisted successfully for user: {UserId}", userId);
+    }
+
+    /// <summary>
+    /// Check if a token is blacklisted
+    /// </summary>
+    public async Task<bool> IsTokenBlacklistedAsync(string token)
+    {
+        if (string.IsNullOrWhiteSpace(token))
+        {
+            return false;
+        }
+
+        var blacklistedToken = await _dbContext.TokenBlacklists
+            .FirstOrDefaultAsync(tb => tb.Token == token && tb.ExpiresAt > DateTime.UtcNow);
+
+        return blacklistedToken != null;
+    }
 }

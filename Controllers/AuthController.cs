@@ -1,6 +1,8 @@
 using invoice_backend.Models;
 using invoice_backend.Services.Auth;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace invoice_backend.Controllers;
 
@@ -18,6 +20,24 @@ public class AuthController : ControllerBase
     {
         _authService = authService;
         _logger = logger;
+    }
+
+    /// <summary>
+    /// Extract userId from JWT claims
+    /// </summary>
+    /// <returns>User ID from claims or 0 if not found</returns>
+    private int GetUserIdFromClaims()
+    {
+        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)
+            ?? User.FindFirst("sub");
+
+        if (userIdClaim != null && int.TryParse(userIdClaim.Value, out var userId))
+        {
+            return userId;
+        }
+
+        _logger.LogWarning("Unable to extract userId from JWT claims");
+        return 0;
     }
 
     /// <summary>
@@ -165,6 +185,70 @@ public class AuthController : ControllerBase
             return StatusCode(StatusCodes.Status500InternalServerError, new AuthResponse(
                 Success: false,
                 Message: "An unexpected error occurred during Google login"
+            ));
+        }
+    }
+
+    /// <summary>
+    /// Logout the current user by invalidating their JWT token
+    /// </summary>
+    /// <returns>Success response</returns>
+    [HttpPost("logout")]
+    [Authorize]
+    public async Task<ActionResult<AuthResponse>> Logout()
+    {
+        _logger.LogInformation("Logout request received");
+
+        try
+        {
+            // Extract token from Authorization header
+            var authHeader = Request.Headers["Authorization"].ToString();
+            if (string.IsNullOrWhiteSpace(authHeader) || !authHeader.StartsWith("Bearer "))
+            {
+                _logger.LogWarning("Logout failed: No valid authorization header");
+                return Unauthorized(new AuthResponse(
+                    Success: false,
+                    Message: "No valid authorization token found"
+                ));
+            }
+
+            var token = authHeader.Substring("Bearer ".Length).Trim();
+
+            // Get user ID from claims
+            var userId = GetUserIdFromClaims();
+            if (userId == 0)
+            {
+                _logger.LogWarning("Logout failed: Unable to extract user ID from token");
+                return Unauthorized(new AuthResponse(
+                    Success: false,
+                    Message: "Invalid token"
+                ));
+            }
+
+            // Invalidate the token
+            await _authService.LogoutAsync(token, userId);
+
+            _logger.LogInformation("Logout successful for user: {UserId}", userId);
+
+            return Ok(new AuthResponse(
+                Success: true,
+                Message: "Logout successful"
+            ));
+        }
+        catch (ArgumentException ex)
+        {
+            _logger.LogWarning(ex, "Logout validation failed: {Message}", ex.Message);
+            return BadRequest(new AuthResponse(
+                Success: false,
+                Message: ex.Message
+            ));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Unexpected error during logout");
+            return StatusCode(StatusCodes.Status500InternalServerError, new AuthResponse(
+                Success: false,
+                Message: "An unexpected error occurred during logout"
             ));
         }
     }
