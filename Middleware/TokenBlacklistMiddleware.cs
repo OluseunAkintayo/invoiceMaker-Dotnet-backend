@@ -10,15 +10,16 @@ public class TokenBlacklistMiddleware(RequestDelegate next, ILogger<TokenBlackli
     private readonly RequestDelegate _next = next;
     private readonly ILogger<TokenBlacklistMiddleware> _logger = logger;
 
-  public async Task InvokeAsync(HttpContext context, IAuthService authService)
+    public async Task InvokeAsync(HttpContext context, IAuthService authService)
     {
         // Extract token from Authorization header
-        var authHeader = context.Request.Headers.Authorization.ToString();
+        var authHeader = context.Request.Headers.Authorization.FirstOrDefault();
 
-        if (!string.IsNullOrWhiteSpace(authHeader) && authHeader.StartsWith("Bearer "))
+        if (!string.IsNullOrWhiteSpace(authHeader) && authHeader.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
         {
-            var token = authHeader.Substring("Bearer ".Length).Trim();
-
+            // Remove "Bearer " prefix (7 characters) using range operator
+            var token = authHeader[7..];
+            Console.WriteLine("Checking authHeader " + authHeader);
             // Check if token is blacklisted
             var isBlacklisted = await authService.IsTokenBlacklistedAsync(token);
 

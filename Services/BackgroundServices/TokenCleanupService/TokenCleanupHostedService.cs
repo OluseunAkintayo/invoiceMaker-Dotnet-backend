@@ -1,15 +1,15 @@
 namespace invoice_backend.Services.BackgroundServices;
 
 /// <summary>
-/// Hosted service that runs token cleanup on a schedule (daily at 2 AM)
+/// Hosted service that runs token cleanup on a schedule (every 30 minutes)
 /// </summary>
 public class TokenCleanupHostedService : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<TokenCleanupHostedService> _logger;
 
-    // Run cleanup daily
-    private readonly TimeSpan _checkInterval = TimeSpan.FromHours(24);
+    // Run cleanup every 30 minutes
+    private readonly TimeSpan _checkInterval = TimeSpan.FromMinutes(30);
 
     public TokenCleanupHostedService(
         IServiceProvider serviceProvider,

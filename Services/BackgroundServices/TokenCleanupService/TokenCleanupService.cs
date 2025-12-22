@@ -6,22 +6,16 @@ namespace invoice_backend.Services.BackgroundServices;
 /// <summary>
 /// Service implementation for cleaning up expired tokens from the blacklist
 /// </summary>
-public class TokenCleanupService : ITokenCleanupService
+public class TokenCleanupService(ApplicationDbContext dbContext, ILogger<TokenCleanupService> logger) : ITokenCleanupService
 {
-    private readonly ApplicationDbContext _dbContext;
-    private readonly ILogger<TokenCleanupService> _logger;
+    private readonly ApplicationDbContext _dbContext = dbContext;
+    private readonly ILogger<TokenCleanupService> _logger = logger;
 
-    public TokenCleanupService(ApplicationDbContext dbContext, ILogger<TokenCleanupService> logger)
-    {
-        _dbContext = dbContext;
-        _logger = logger;
-    }
-
-    /// <summary>
-    /// Remove expired tokens from the blacklist
-    /// </summary>
-    /// <returns>Number of tokens removed</returns>
-    public async Task<int> CleanupExpiredTokensAsync()
+  /// <summary>
+  /// Remove expired tokens from the blacklist
+  /// </summary>
+  /// <returns>Number of tokens removed</returns>
+  public async Task<int> CleanupExpiredTokensAsync()
     {
         _logger.LogDebug("Starting expired token cleanup");
 

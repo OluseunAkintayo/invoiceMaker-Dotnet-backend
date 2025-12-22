@@ -13,16 +13,10 @@ namespace invoice_backend.Controllers;
 [ApiController]
 [Route("api/[controller]")]
 [Authorize]
-public class InvoiceController : ControllerBase
+public class InvoiceController(IInvoiceService invoiceService, ILogger<InvoiceController> logger) : ControllerBase
 {
-    private readonly IInvoiceService _invoiceService;
-    private readonly ILogger<InvoiceController> _logger;
-
-    public InvoiceController(IInvoiceService invoiceService, ILogger<InvoiceController> logger)
-    {
-        _invoiceService = invoiceService;
-        _logger = logger;
-    }
+    private readonly IInvoiceService _invoiceService = invoiceService;
+    private readonly ILogger<InvoiceController> _logger = logger;
 
     /// <summary>
     /// Extract userId from JWT claims

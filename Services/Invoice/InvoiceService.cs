@@ -9,16 +9,10 @@ namespace invoice_backend.Services.Invoice;
 /// <summary>
 /// Service for managing invoices
 /// </summary>
-public class InvoiceService : IInvoiceService
+public class InvoiceService(ApplicationDbContext dbContext, ILogger<InvoiceService> logger) : IInvoiceService
 {
-    private readonly ApplicationDbContext _dbContext;
-    private readonly ILogger<InvoiceService> _logger;
-
-    public InvoiceService(ApplicationDbContext dbContext, ILogger<InvoiceService> logger)
-    {
-        _dbContext = dbContext;
-        _logger = logger;
-    }
+    private readonly ApplicationDbContext _dbContext = dbContext;
+    private readonly ILogger<InvoiceService> _logger = logger;
 
     /// <summary>
     /// Get all invoices for a user (excludes soft-deleted invoices)
